@@ -12,3 +12,6 @@ backend/prisma/dev.db
 backend/.pgdata/
 # Vercel CLI
 .vercel
+
+# Production env for Vercel + Supabase (contains secrets)
+deploy.env

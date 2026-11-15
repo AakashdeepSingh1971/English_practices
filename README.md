@@ -77,13 +77,10 @@ Then deploy. Production deploys run `prisma migrate deploy` during the build, so
 tables and later ones apply new migrations. Preview deploys skip migrations so a pull request can't change
 the live schema; if previews share the production database, they must not depend on unmerged schema changes.
 
-**3. First-time setup**, from your machine, pointing the scripts at Supabase (use the session pooler URL for both):
-```bash
-cd backend
-export DATABASE_URL='<session pooler url>' DIRECT_URL='<session pooler url>'
-TEACHER_PASSWORD='a long password' npm run create-teacher -- you@example.com "Your Name"
-TEACHER_EMAIL=you@example.com npm run seed:reading
-```
+**3. First-time setup and testing.** Put the same values in `deploy.env` (gitignored), then run
+`npm run deploy:setup` (tables, your teacher account, reading tests) and `npm run deploy:check`
+(tests the env file, the database and the live site). Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md).
+
 Public sign-up only creates **student** accounts; teachers are created with `create-teacher`.
 Students join a course by entering its course ID on their dashboard (the ID is in the course page's address).
 Never run `npm run seed` against Supabase: it creates accounts with the password `password123`.

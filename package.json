@@ -12,6 +12,8 @@
     "test": "npm test --prefix backend",
     "dev:api": "npm run dev --prefix backend",
     "db:local": "npm run db:local --prefix backend",
-    "dev:web": "npm run dev --prefix frontend"
+    "dev:web": "npm run dev --prefix frontend",
+    "deploy:setup": "npm run deploy:setup --prefix backend",
+    "deploy:check": "npm run deploy:check --prefix backend"
   }
 }

@@ -15,7 +15,9 @@
     "seed:reading": "tsx prisma/seed-reading.ts",
     "create-teacher": "tsx prisma/create-teacher.ts",
     "review:reading": "tsx prisma/review-reading.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:setup": "tsx scripts/deploy-setup.ts",
+    "deploy:check": "tsx scripts/deploy-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
