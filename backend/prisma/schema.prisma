@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite has no native enum support in Prisma, so enum-shaped fields below
+// are plain Strings. Valid values are enforced in code via the Zod enums in
+// src/types/enums.ts (Role, ModuleType, TaskType, SubmissionStatus, ViolationType).
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String // "STUDENT" | "TEACHER_ADMIN"
+  createdAt    DateTime @default(now())
+
+  enrollments    Enrollment[]
+  submissions    Submission[]
+  testAttempts   TestAttempt[]
+  gradeOverrides Grade[]       @relation("GradeOverriddenBy")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  modules     Module[]
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model Module {
+  id       String @id @default(cuid())
+  courseId String
+  title    String
+  type     String // ModuleType
+  order    Int
+
+  course Course @relation(fields: [courseId], references: [id])
+  tasks  Task[]
+}
+
+model Task {
+  id              String  @id @default(cuid())
+  moduleId        String
+  title           String
+  type            String // TaskType
+  order           Int
+  timeLimitSec    Int?
+  attemptsAllowed Int     @default(1)
+  lockdownEnabled Boolean @default(false)
+  passCriteria    String?
+  contentJson     String
+
+  module      Module       @relation(fields: [moduleId], references: [id])
+  answerKey   AnswerKey?
+  submissions Submission[]
+}
+
+model AnswerKey {
+  id      String @id @default(cuid())
+  taskId  String @unique
+  keyJson String
+
+  task Task @relation(fields: [taskId], references: [id])
+}
+
+model Submission {
+  id           String    @id @default(cuid())
+  taskId       String
+  userId       String
+  status       String    @default("IN_PROGRESS") // SubmissionStatus
+  responseJson String
+  rawScore     Int?
+  startedAt    DateTime  @default(now())
+  submittedAt  DateTime?
+
+  task    Task         @relation(fields: [taskId], references: [id])
+  user    User         @relation(fields: [userId], references: [id])
+  grade   Grade?
+  attempt TestAttempt?
+}
+
+model Grade {
+  id                 String   @id @default(cuid())
+  submissionId       String   @unique
+  band               Float
+  criteriaJson       String?
+  aiRawResponse       String?
+  gradedBy           String
+  overriddenByUserId String?
+  overrideReason     String?
+  gradedAt           DateTime @default(now())
+
+  submission       Submission @relation(fields: [submissionId], references: [id])
+  overriddenByUser User?      @relation("GradeOverriddenBy", fields: [overriddenByUserId], references: [id])
+}
+
+model TestAttempt {
+  id             String    @id @default(cuid())
+  submissionId   String    @unique
+  userId         String
+  lockdownActive Boolean   @default(false)
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  autoSubmitted  Boolean   @default(false)
+
+  submission Submission  @relation(fields: [submissionId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  violations Violation[]
+}
+
+model Violation {
+  id            String   @id @default(cuid())
+  testAttemptId String
+  type          String // ViolationType
+  occurredAt    DateTime @default(now())
+
+  testAttempt TestAttempt @relation(fields: [testAttemptId], references: [id])
+}
