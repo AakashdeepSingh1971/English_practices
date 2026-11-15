@@ -1,5 +1,6 @@
-// Shared shapes for IELTS Academic Reading practice tests.
-// Each test file in ./tests exports a ReadingTestDef; seed-reading.ts loads them all.
+// Shared shapes for IELTS Reading practice tests (Academic and General Training).
+// Academic tests live in ./tests, General Training tests in ./general;
+// seed-reading.ts loads them.
 
 export type Answer = string | string[];
 
@@ -42,8 +43,13 @@ export interface PassageDef {
   groups: GroupDef[];
 }
 
+export type ReadingVariant = "ACADEMIC" | "GENERAL";
+
 export interface ReadingTestDef {
   number: number;
+  // Defaults to ACADEMIC. General Training uses "Section" instead of "Passage"
+  // and its own (stricter) band table.
+  variant?: ReadingVariant;
   passages: [PassageDef, PassageDef, PassageDef];
 }
 

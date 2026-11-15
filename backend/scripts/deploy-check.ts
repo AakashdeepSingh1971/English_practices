@@ -15,7 +15,7 @@ import path from "node:path";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { DEPLOY_ENV_PATH, hasPlaceholder, loadDeployEnv, redactUrl, VERCEL_KEYS, LOCAL_KEYS } from "./deploy-env";
-import { READING_TESTS } from "../prisma/reading/tests";
+import { GENERAL_TESTS } from "../prisma/reading/general";
 
 const env = loadDeployEnv();
 let failures = 0;
@@ -206,14 +206,14 @@ async function phase2(dbOk: boolean): Promise<{ admin: PrismaClient | null; fixt
   }
   pass(`course IELTS Preparation exists · Course ID ${course.id}`);
 
-  const tests = course.modules.filter((m) => m.title.startsWith("Academic Reading — Practice Test"));
+  const tests = course.modules.filter((m) => m.title.startsWith("General Training Reading — Practice Test"));
   check(
-    tests.length >= READING_TESTS.length,
-    `${tests.length} reading practice test(s) (expected ${READING_TESTS.length})`,
+    tests.length >= GENERAL_TESTS.length,
+    `${tests.length} General Training reading test(s) (expected ${GENERAL_TESTS.length})`,
     "run npm run deploy:setup"
   );
   const broken = tests.filter((m) => m.tasks.length !== 4 || m.tasks.some((t) => !t.answerKey));
-  check(broken.length === 0, "every test has 3 passages + 1 mock, all with answer keys", `check: ${broken.map((m) => m.title).join(", ")}`);
+  check(broken.length === 0, "every test has 3 sections + 1 mock, all with answer keys", `check: ${broken.map((m) => m.title).join(", ")}`);
 
   const t1 = tests.find((m) => m.title.endsWith("Test 1"));
   const task = t1?.tasks.find((t) => t.order === 1);
@@ -358,10 +358,10 @@ async function phase3(appOk: boolean, admin: PrismaClient | null, fx: Fixture | 
 
     const start = await call("POST", `/api/tasks/${fx.taskId}/attempts/start`, { token });
     if (start.status !== 201) {
-      fail(`starting T1 Passage 1 failed (${start.status})`);
+      fail(`starting T1 Section 1 failed (${start.status})`);
       return;
     }
-    pass(`starting T1 Passage 1 works (timer ${Math.round(start.json.timeLimitSec / 60)} min)`);
+    pass(`starting T1 Section 1 works (timer ${Math.round(start.json.timeLimitSec / 60)} min)`);
 
     const answers = Object.fromEntries(Object.entries(fx.key).map(([q, a]) => [q, [a].flat()[0]]));
     const saved = await call("PATCH", `/api/submissions/${start.json.submissionId}/autosave`, { token, body: { responseJson: { answers } } });

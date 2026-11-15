@@ -35,6 +35,8 @@ export interface TaskContent {
   audioUrl?: string | null;
   questions: TaskQuestion[];
   sections?: TaskSection[];
+  // What each section is called in the UI: "Passage" (Academic) or "Section" (General Training).
+  sectionLabel?: string;
 }
 
 export interface Task {

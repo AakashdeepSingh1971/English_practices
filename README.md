@@ -11,7 +11,7 @@ What works right now:
 - Student: enroll in a course, take Listening/Reading tasks, get instant auto-graded band scores (official IELTS raw-score → band conversion tables).
 - **Monitored test ("lockdown") mode**: fullscreen enforcement, tab-switch/blur detection, blocked copy/paste/right-click/devtools shortcuts, auto-submit after repeated violations, full violation audit log visible to teachers. This is a **best-effort browser-level deterrent**, not OS-level enforcement — a second device or screen-mirroring can't be detected from JS. The UI is worded as "monitored test environment" rather than claiming true lockdown.
 - In-progress answers autosave on every change to IndexedDB (instant, survives a refresh) and the backend (durable, multi-device). Leaving a test and coming back resumes the same attempt; the timer keeps running from the original start, and an attempt whose time ran out is submitted with its saved answers.
-- **Reading practice library**: original IELTS Academic Reading tests (3 passages, 40 questions, 2,150–2,750 words each), covering all 11 official question types. Each test is offered as three 20-minute passage tasks plus a 60-minute monitored mock test.
+- **Reading practice library**: original IELTS **General Training** Reading tests (the course default: Section 1 everyday texts, Section 2 work-related texts, Section 3 one longer article; 40 questions) graded with the General Training band table. Original Academic Reading tests (3 passages, all 11 question types) are also included and can be seeded instead. Each test is offered as three 20-minute section tasks plus a 60-minute monitored mock test.
 - **Test screen**: passage and questions side by side, passage tabs for multi-passage tests, a question navigator, and an inline confirmation before submitting with blank answers.
 - **Answer review** (`/results/:submissionId`): score, band, accuracy by question type, each answer against the key, the passage on demand, and a mistakes-only filter. Available to the student after submitting and to the course's teacher.
 - Course page shows per-task progress (not started / in progress / attempts and best band).
@@ -92,14 +92,18 @@ repo root, or the `Dockerfile`. There the Express server also serves the built a
 ## Reading practice tests
 ```bash
 cd backend
-npm run seed:reading              # adds new tests; refreshes tests nobody has taken yet
-npm run seed:reading -- --force   # also replaces tests that have submissions (deletes them)
+npm run seed:reading                # General Training tests; refreshes tests nobody has taken yet
+npm run seed:reading -- --academic  # Academic tests instead (--both for both kinds)
+npm run seed:reading -- --force     # also replaces tests that have submissions (deletes them)
 npm run review:reading            # latest reading attempt, question by question
 npm run review:reading -- --stats # accuracy by question type across all attempts
 ```
-Each test lives in `backend/prisma/reading/tests/testNN.ts` and is registered in `tests/index.ts`.
-Question ids are `q1`–`q40` across the whole paper, so a single-passage task keeps official numbering
-(Passage 2 starts at 14). Single-passage scores are scaled to 40 before the band lookup.
+General Training tests live in `backend/prisma/reading/general/gtNN.ts` (registered in `general/index.ts`),
+Academic tests in `backend/prisma/reading/tests/testNN.ts` (registered in `tests/index.ts`). Seeding one kind
+removes the other kind's modules from the course unless they have submissions.
+Question ids are `q1`–`q40` across the whole paper, so a single-section task keeps official numbering
+(Section 2 starts where Section 1 ended). Single-section scores are scaled to 40 before the band lookup, using
+the task's `bandScale` (`GENERAL_TRAINING` or `ACADEMIC`).
 
 ## Tests
 ```bash

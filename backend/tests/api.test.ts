@@ -4,7 +4,8 @@ import bcrypt from "bcryptjs";
 import { app } from "../src/app";
 import { prisma } from "../src/prisma";
 import { buildSection } from "../prisma/reading/types";
-import { READING_TESTS } from "../prisma/reading/tests";
+import { ACADEMIC_TESTS } from "../prisma/reading/tests";
+import { GENERAL_TESTS } from "../prisma/reading/general";
 
 const api = request(app);
 const PASSWORD = "password123";
@@ -26,6 +27,8 @@ let outsider: Awaited<ReturnType<typeof makeUser>>;
 let passageTaskId: string;
 let mockTaskId: string;
 let key: Record<string, string | string[]>;
+let gtMockTaskId: string;
+let gtKey: Record<string, string | string[]>;
 
 beforeAll(async () => {
   teacher = await makeUser("teacher@test.local", "TEACHER_ADMIN");
@@ -43,7 +46,7 @@ beforeAll(async () => {
   });
 
   // Passage 2 of Test 1 (questions 14–26) as a practice task, plus the full test as a monitored mock.
-  const test = READING_TESTS[0];
+  const test = ACADEMIC_TESTS[0];
   let next = 1;
   const sections = test.passages.map((p) => {
     const s = buildSection(p, next);
@@ -74,6 +77,27 @@ beforeAll(async () => {
     data: { taskId: mock.id, keyJson: JSON.stringify(Object.assign({}, ...sections.map((s) => s.key))) },
   });
   mockTaskId = mock.id;
+
+  // A General Training full test, graded with the General Training band table.
+  let gtNext = 1;
+  const gtSections = GENERAL_TESTS[0].passages.map((p) => {
+    const s = buildSection(p, gtNext);
+    gtNext += s.questions.length;
+    return s;
+  });
+  const gtMock = await prisma.task.create({
+    data: {
+      moduleId: module.id, title: "GT Mock", type: "MULTIPLE_CHOICE", order: 3,
+      timeLimitSec: 3600, attemptsAllowed: 5, lockdownEnabled: false,
+      contentJson: JSON.stringify({
+        instructions: "x", bandScale: "GENERAL_TRAINING", sectionLabel: "Section",
+        questions: [], sections: gtSections.map(strip),
+      }),
+    },
+  });
+  gtKey = Object.assign({}, ...gtSections.map((s) => s.key));
+  await prisma.answerKey.create({ data: { taskId: gtMock.id, keyJson: JSON.stringify(gtKey) } });
+  gtMockTaskId = gtMock.id;
 });
 
 // Each test starts with no attempts on record.
@@ -205,6 +229,15 @@ describe("submitting and grading", () => {
     expect(res.status).toBe(200);
     expect(res.body.submission).toMatchObject({ status: "GRADED", rawScore: 13 });
     expect(res.body.grade.band).toBe(9);
+  });
+
+  it("grades General Training tasks with the General Training band table", async () => {
+    const { body } = await start(student, gtMockTaskId);
+    // 34/40 is band 7 in General Training (it would be 7.5 in Academic).
+    const answers = Object.fromEntries(Object.entries(gtKey).slice(0, 34).map(([q, a]) => [q, [a].flat()[0]]));
+    const res = await submit(student, body.submissionId, answers);
+    expect(res.body.submission.rawScore).toBe(34);
+    expect(res.body.grade.band).toBe(7);
   });
 
   it("refuses a second submit and further autosaves", async () => {

@@ -22,6 +22,25 @@ describe("rawScoreToBand (Academic Reading)", () => {
   });
 });
 
+describe("rawScoreToBand (General Training Reading)", () => {
+  it.each([
+    [40, 9], [39, 8.5], [38, 8], [37, 8], [36, 7.5], [35, 7], [34, 7], [33, 6.5], [32, 6.5],
+    [30, 6], [27, 5.5], [23, 5], [19, 4.5], [15, 4], [12, 3.5], [9, 3], [6, 2.5], [5, 0], [0, 0],
+  ])("%i/40 → band %f", (raw, band) => {
+    expect(rawScoreToBand("READING", raw, "GENERAL_TRAINING")).toBe(band);
+  });
+
+  it("needs more correct answers than Academic for the same band", () => {
+    expect(rawScoreToBand("READING", 30)).toBe(7);
+    expect(rawScoreToBand("READING", 30, "GENERAL_TRAINING")).toBe(6);
+  });
+
+  it("is used when grading a General Training submission", () => {
+    expect(gradeObjectiveSubmission("READING", key40, answers(30), "GENERAL_TRAINING").band).toBe(6);
+    expect(gradeObjectiveSubmission("READING", key40, answers(30)).band).toBe(7);
+  });
+});
+
 describe("isAnswerCorrect", () => {
   it("ignores case, surrounding and repeated whitespace", () => {
     expect(isAnswerCorrect("  Social   JET lag ", "social jet lag")).toBe(true);

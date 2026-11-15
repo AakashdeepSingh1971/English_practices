@@ -1,4 +1,4 @@
-import { rawScoreToBand } from "./bandConversion";
+import { rawScoreToBand, type BandScale } from "./bandConversion";
 import type { ModuleTypeValue } from "../../types/enums";
 
 // AnswerKey.keyJson shape: { [questionId: string]: string | string[] }
@@ -30,7 +30,8 @@ export interface ObjectiveGradingResult {
 export function gradeObjectiveSubmission(
   moduleType: ModuleTypeValue,
   keyJson: string,
-  responseJson: string
+  responseJson: string,
+  scale: BandScale = "ACADEMIC"
 ): ObjectiveGradingResult {
   const answerKey: AnswerKeyMap = JSON.parse(keyJson);
   const response: ObjectiveResponse = JSON.parse(responseJson);
@@ -49,7 +50,7 @@ export function gradeObjectiveSubmission(
     questionIds.length > 0 && questionIds.length !== FULL_TEST_QUESTIONS
       ? Math.round((rawScore / questionIds.length) * FULL_TEST_QUESTIONS)
       : rawScore;
-  const band = rawScoreToBand(moduleType, scaled);
+  const band = rawScoreToBand(moduleType, scaled, scale);
 
   return { rawScore, totalQuestions: questionIds.length, band };
 }

@@ -1,28 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { buildSection, type QuestionKind } from "../prisma/reading/types";
-import { READING_TESTS } from "../prisma/reading/tests";
+import { buildSection, type QuestionKind, type ReadingTestDef } from "../prisma/reading/types";
+import { ACADEMIC_TESTS } from "../prisma/reading/tests";
+import { GENERAL_TESTS } from "../prisma/reading/general";
 
 // Same rule as the frontend's optionValue(): "A. text" -> "A", "iv. x" -> "iv", "TRUE" -> "TRUE".
 const optionValue = (o: string) => o.match(/^([A-Za-z]{1,5})\.\s/)?.[1] ?? o;
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
-function build(testIndex: number) {
+function build(test: ReadingTestDef) {
   let next = 1;
-  return READING_TESTS[testIndex].passages.map((p) => {
+  return test.passages.map((p) => {
     const s = buildSection(p, next);
     next += s.questions.length;
     return s;
   });
 }
 
-describe("reading test library", () => {
-  it("has unique test numbers", () => {
-    const numbers = READING_TESTS.map((t) => t.number);
+const kindsIn = (tests: ReadingTestDef[]) =>
+  new Set(tests.flatMap((t) => t.passages.flatMap((p) => p.groups.map((g) => g.kind))));
+
+describe("Academic test library", () => {
+  it("has unique test numbers, all marked Academic", () => {
+    const numbers = ACADEMIC_TESTS.map((t) => t.number);
     expect(new Set(numbers).size).toBe(numbers.length);
+    for (const t of ACADEMIC_TESTS) expect(t.variant ?? "ACADEMIC").toBe("ACADEMIC");
   });
 
   it("covers all 11 official IELTS Reading question types", () => {
-    const kinds = new Set(READING_TESTS.flatMap((t) => t.passages.flatMap((p) => p.groups.map((g) => g.kind))));
+    const kinds = kindsIn(ACADEMIC_TESTS);
     const official: QuestionKind[] = [
       "Multiple choice", "True/False/Not Given", "Yes/No/Not Given", "Matching information",
       "Matching headings", "Matching features", "Matching sentence endings", "Sentence completion",
@@ -32,9 +37,39 @@ describe("reading test library", () => {
   });
 });
 
-describe.each(READING_TESTS.map((t, i) => [t.number, i] as const))("Practice Test %i", (_n, i) => {
-  const test = READING_TESTS[i];
-  const sections = build(i);
+describe("General Training test library", () => {
+  it("has unique test numbers, all marked General Training", () => {
+    const numbers = GENERAL_TESTS.map((t) => t.number);
+    expect(new Set(numbers).size).toBe(numbers.length);
+    for (const t of GENERAL_TESTS) expect(t.variant).toBe("GENERAL");
+  });
+
+  it("covers the question types common in General Training", () => {
+    const kinds = kindsIn(GENERAL_TESTS);
+    const common: QuestionKind[] = [
+      "Multiple choice", "True/False/Not Given", "Yes/No/Not Given", "Matching information",
+      "Matching headings", "Matching features", "Sentence completion", "Summary completion",
+      "Note completion", "Table completion", "Flow-chart completion", "Short answer",
+    ];
+    for (const k of common) expect(kinds, k).toContain(k);
+  });
+
+  it("follows the General Training layout: Section 1 has 2+ texts, Section 2 has 2 texts", () => {
+    for (const t of GENERAL_TESTS) {
+      const texts = (p: string) => (p.match(/^TEXT \d+$/gm) ?? []).length;
+      expect(texts(t.passages[0].passage), `Test ${t.number} Section 1`).toBeGreaterThanOrEqual(2);
+      expect(texts(t.passages[1].passage), `Test ${t.number} Section 2`).toBe(2);
+    }
+  });
+});
+
+const ALL = [
+  ...ACADEMIC_TESTS.map((t) => ({ name: `Academic Test ${t.number}`, test: t, words: [2150, 2750] })),
+  ...GENERAL_TESTS.map((t) => ({ name: `General Training Test ${t.number}`, test: t, words: [1900, 2750] })),
+];
+
+describe.each(ALL)("$name", ({ test, words: [minWords, maxWords] }) => {
+  const sections = build(test);
   const questions = sections.flatMap((s) => s.questions);
   const key = Object.assign({}, ...sections.map((s) => s.key));
 
@@ -42,10 +77,10 @@ describe.each(READING_TESTS.map((t, i) => [t.number, i] as const))("Practice Tes
     expect(questions.map((q) => q.id)).toEqual(Array.from({ length: 40 }, (_, k) => `q${k + 1}`));
   });
 
-  it("has a total passage length within the real exam range (2,150–2,750 words)", () => {
+  it("has a total text length within the real exam range", () => {
     const total = test.passages.reduce((n, p) => n + words(p.passage), 0);
-    expect(total).toBeGreaterThanOrEqual(2150);
-    expect(total).toBeLessThanOrEqual(2750);
+    expect(total).toBeGreaterThanOrEqual(minWords);
+    expect(total).toBeLessThanOrEqual(maxWords);
   });
 
   it("has an answer for every question", () => {
@@ -101,7 +136,7 @@ describe.each(READING_TESTS.map((t, i) => [t.number, i] as const))("Practice Tes
     for (const p of test.passages) {
       const text = p.passage.toLowerCase();
       for (const g of p.groups) {
-        if (g.instruction.includes("from the passage") && !g.options) {
+        if (/from (the passage|the text|Text \d)/.test(g.instruction) && !g.options) {
           g.questions.forEach((q, qi) => {
             const accepted = [q.answer].flat();
             const found = accepted.some((a) => text.includes(a.toLowerCase()));

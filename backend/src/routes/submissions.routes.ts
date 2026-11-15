@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/requireRole";
 import { asyncHandler } from "../middleware/errorHandler";
 import { gradeObjectiveSubmission, isAnswerCorrect } from "../services/grading/objectiveGrading.service";
+import type { BandScale } from "../services/grading/bandConversion";
 import { OBJECTIVE_MODULE_TYPES, type ModuleTypeValue } from "../types/enums";
 
 export const submissionsRouter = Router();
@@ -23,7 +24,13 @@ async function finalizeSubmission(submissionId: string, finalResponseJson: strin
 
   let gradingResult: { rawScore: number; band: number } | null = null;
   if (OBJECTIVE_MODULE_TYPES.includes(moduleType) && task.answerKey) {
-    gradingResult = gradeObjectiveSubmission(moduleType, task.answerKey.keyJson, finalResponseJson);
+    const { bandScale } = JSON.parse(task.contentJson) as { bandScale?: BandScale };
+    gradingResult = gradeObjectiveSubmission(
+      moduleType,
+      task.answerKey.keyJson,
+      finalResponseJson,
+      bandScale === "GENERAL_TRAINING" ? "GENERAL_TRAINING" : "ACADEMIC"
+    );
   }
 
   const updated = await prisma.submission.update({

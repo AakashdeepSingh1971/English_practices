@@ -24,7 +24,7 @@ There are two kinds of users:
 flowchart LR
     T[Teacher] -->|creates| C[Course]
     C --> M[Modules<br/>e.g. Practice Test 1]
-    M --> K[Tasks<br/>passages and mock tests]
+    M --> K[Tasks<br/>sections and mock tests]
     S[Student] -->|enrolls with Course ID| C
     S -->|takes| K
     K -->|submit| G[Auto-grader<br/>score and band]
@@ -34,28 +34,32 @@ flowchart LR
 
 ### What's in the reading course
 
-There are 3 practice tests. Each one has 3 original passages and 40 questions, like the real Academic Reading paper.
+There are 3 **General Training** practice tests, written from scratch. Each has 3 sections and 40 questions, like the real paper:
 
-| Test | Passage 1 | Passage 2 | Passage 3 |
+- **Section 1** (Q1–14) is short everyday texts, such as adverts and notices.
+- **Section 2** (Q15–27) is two work-related texts, such as staff guides and policies.
+- **Section 3** (Q28–40) is one longer article on a general topic.
+
+| Test | Section 1 | Section 2 | Section 3 |
 |---|---|---|---|
-| 1 | Urban Beekeeping | Teenage Sleep | Machine Creativity |
-| 2 | Shipping Containers | Coral Restoration | The Psychology of Choice |
-| 3 | Vertical Farming | Standard Time | Bilingualism |
+| 1 | Community classes; leisure centre membership | Starting work at a warehouse; annual leave | The public library |
+| 2 | Places to stay; waste collection changes | Manual handling; internal vacancies | History of the bicycle |
+| 3 | Museums; parking permits | Working from home; customer complaints | Learning music as an adult |
 
 Each test can be taken in two ways:
 
 | Task | Time | Attempts | Fullscreen lockdown | Use it for |
 |---|---|---|---|---|
-| **Passage 1, 2, 3** (about 13 questions each) | 20 min | 99 | No | Practising one passage at a time |
+| **Section 1, 2, 3** (13–14 questions each) | 20 min | 99 | No | Practising one section at a time |
 | **Full Mock Test** (40 questions) | 60 min | 3 | Yes | Exam conditions |
 
-The tests cover every IELTS reading question type:
+The tests cover the question types used in General Training:
 
 - True/False/Not Given and Yes/No/Not Given
 - Multiple choice
-- Matching headings, information, features and sentence endings
+- Matching headings, information and features
 - Sentence, summary, note, table and flow-chart completion
-- Diagram labelling and short answer
+- Short answer
 
 ### What happens during a test
 
@@ -65,7 +69,7 @@ flowchart TD
     B -- No --> C[Start: timer begins]
     B -- Yes, time left --> D[Resume with your<br/>saved answers]
     B -- Yes, time ran out --> E[Auto-submitted]
-    C --> F[Answer questions<br/>passage left, questions right]
+    C --> F[Answer questions<br/>text left, questions right]
     D --> F
     F -->|every change| SAVE[(Autosaved)]
     F --> L{Mock test?}
@@ -81,7 +85,8 @@ Good to know:
 
 - **Your answers are saved as you type.** If you close the tab or reload, click **Start / Resume Test** and you continue where you left off. The timer keeps running while you're away.
 - **Marking is like the real exam, but forgiving about case and spacing.** `Cell Wall`, `cell wall` and ` cell  wall ` all count as the same answer. Spelling must be exact, and you must stay within the word limit in the instructions.
-- **Bands for one passage are estimates.** A single-passage score is scaled up to 40 questions before it is converted to a band, so 10/13 is treated as about 31/40.
+- **Bands use the General Training table.** General Training needs more correct answers than Academic for the same band: for example, 30/40 is band 6, and 34/40 is band 7.
+- **Bands for one section are estimates.** A single-section score is scaled up to 40 questions before it is converted to a band, so 10/13 is treated as about 31/40. Section 1 is the easiest, so its estimate runs high.
 
 ---
 
@@ -150,8 +155,8 @@ The demo student is already enrolled in **IELTS Preparation**.
 flowchart TD
     L[Log in as the student] --> D[Student dashboard]
     D --> CO[Click IELTS Preparation]
-    CO --> MOD["Pick a module<br/>Academic Reading: Practice Test 1"]
-    MOD --> TK[Pick a task<br/>start with Passage 1]
+    CO --> MOD["Pick a module<br/>General Training Reading: Practice Test 1"]
+    MOD --> TK[Pick a task<br/>start with Section 1]
     TK --> ST[Start / Resume Test]
     ST --> ANS[Answer the questions]
     ANS --> SUB[Submit, then Submit now]
@@ -163,11 +168,11 @@ Step by step:
 
 1. Log in as `student@example.com`.
 2. Click **IELTS Preparation**. Each module shows your progress, such as "1/4 done".
-3. Open **Academic Reading: Practice Test 1**, then **T1 Passage 1: Urban Beekeeping**.
+3. Open **General Training Reading: Practice Test 1**, then **T1 Section 1: Classes & Leisure Centre**.
 4. Read the instructions, then click **Start / Resume Test**.
-5. The passage is on the left and the questions are on the right.
+5. The text is on the left and the questions are on the right.
    - The numbered navigator at the bottom shows which questions you've answered. Click a number to jump to that question.
-   - In a mock test, use the tabs to switch between Passage 1, 2 and 3.
+   - In a mock test, use the tabs to switch between Section 1, 2 and 3.
 6. Click **Submit**. If you still have blank answers, you'll be asked to confirm. Click **Submit now**.
 7. The **Review page** shows:
    - your score and estimated band;
@@ -183,7 +188,7 @@ To open a past review again, click **My results** (or **View my results** on the
 
 The review page already marks every answer. If you want a second opinion or a breakdown, there are two options.
 
-**Ask Claude.** Say something like *"I submitted Test 1 Passage 2, check my answers."* Claude runs the review script, explains each wrong answer from the passage and points out patterns, for example "you mix up False and Not Given".
+**Ask Claude.** Say something like *"I submitted Test 1 Section 2, check my answers."* Claude runs the review script, explains each wrong answer from the text and points out patterns, for example "you mix up False and Not Given".
 
 **Run the review script yourself**, from `backend/`:
 
@@ -220,16 +225,16 @@ New sign-ups are always students. To try the full student journey, register a ne
 
 ## 6. Suggested test plan
 
-A first session of about 2.5 hours, which builds from short passages to full exam conditions:
+A first session of about 2.5 hours, which builds from single sections to full exam conditions:
 
 | # | Task | Time | Why |
 |---|---|---|---|
-| 1 | T1 Passage 1: Urban Beekeeping | 20 min | Easiest passage; get used to the screen |
-| 2 | T1 Passage 2: Teenage Sleep | 20 min | Matching headings and information |
-| 3 | T1 Passage 3: Machine Creativity | 20 min | Hardest passage type: Yes/No/Not Given and summary |
+| 1 | T1 Section 1: Classes & Leisure Centre | 20 min | Easiest section; get used to the screen |
+| 2 | T1 Section 2: New Staff & Annual Leave | 20 min | Note completion and short answers on work texts |
+| 3 | T1 Section 3: The Public Library | 20 min | Hardest section: matching headings on a long text |
 | 4 | Check: `npm run review:reading -- --stats` | 5 min | Find your weakest question type |
 | 5 | **T2 Full Mock Test** | 60 min | Real exam conditions, all 40 questions in one sitting |
-| 6 | Review the mock, then retry weak passages from Test 3 | 20–40 min | Targeted practice |
+| 6 | Review the mock, then retry weak sections from Test 3 | 20–40 min | Targeted practice |
 
 After each test, write down your result:
 
@@ -244,7 +249,7 @@ After each test, write down your result:
 Use this to test the app, not just your reading:
 
 - [ ] Reload the page mid-test. Your answers are still there after **Start / Resume Test**.
-- [ ] Leave a passage test open past 20 minutes. It auto-submits.
+- [ ] Leave a section test open past 20 minutes. It auto-submits.
 - [ ] In the mock, press Esc once. You get a warning and the teacher sees 1 violation. A second one auto-submits. This uses up 1 of your 3 mock attempts.
 - [ ] Type an answer in different capitals or with extra spaces. It is still marked correct.
 - [ ] Register a new student and enrol with the Course ID.

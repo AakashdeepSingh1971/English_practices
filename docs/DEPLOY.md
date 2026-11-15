@@ -84,7 +84,7 @@ Phase 3 takes a real test on the live site with a temporary student account, the
 - the API is running, and logins and wrong passwords behave correctly;
 - the login cookie is secure, and you stay signed in after a reload;
 - Vercel has the same secrets as `deploy.env`;
-- a student can sign up, enrol, start a test, autosave, resume, submit (13/13 → band 9) and see the review;
+- a student can sign up, enrol, start a test, autosave, resume, submit (all answers correct → band 9) and see the review;
 - the teacher can see that review.
 
 When it says **✓ All checks passed**, open the site, log in as the teacher and share the **Course ID** with students.

@@ -173,7 +173,7 @@ export function TaskRunner() {
         <p className="meta">
           {allQuestions.length} questions
           {task.timeLimitSec ? ` · ${Math.round(task.timeLimitSec / 60)} minutes` : ""}
-          {sections.length > 1 ? ` · ${sections.length} passages` : ""}
+          {sections.length > 1 ? ` · ${sections.length} ${(task.content.sectionLabel ?? "Passage").toLowerCase()}s` : ""}
         </p>
         {task.lockdownEnabled && (
           <p className="warning">
@@ -257,14 +257,14 @@ export function TaskRunner() {
       <header className="test-bar">
         <strong className="test-bar__title">{task.title}</strong>
         {sections.length > 1 && (
-          <nav className="tabs" aria-label="Passages">
+          <nav className="tabs" aria-label={`${task.content.sectionLabel ?? "Passage"}s`}>
             {sections.map((s, i) => (
               <button
                 key={s.title + i}
                 className={i === activeSection ? "tab tab--active" : "tab"}
                 onClick={() => setActiveSection(i)}
               >
-                Passage {i + 1}
+                {task.content.sectionLabel ?? "Passage"} {i + 1}
               </button>
             ))}
           </nav>

@@ -1,23 +1,69 @@
 /**
- * Seeds IELTS Academic Reading practice tests from prisma/reading/tests.
- * Each test becomes one module with 3 single-passage practice tasks and a
- * full 60-minute, 40-question mock test. All passages are original writing.
+ * Seeds IELTS Reading practice tests into the teacher's "IELTS Preparation" course.
+ * Each test becomes one module with 3 single-section practice tasks and a full
+ * 60-minute, 40-question mock test. All texts are original writing.
  *
- *   npm run seed:reading            add new tests; refresh tests nobody has taken yet
- *   npm run seed:reading -- --force also replace tests that have submissions (deletes them!)
+ *   npm run seed:reading                  General Training tests (the course default)
+ *   npm run seed:reading -- --academic    Academic tests instead
+ *   npm run seed:reading -- --both        both kinds side by side
+ *   npm run seed:reading -- --force       also replace tests that have submissions (deletes them!)
+ *
+ * Tests of the kind not being seeded are removed from the course, unless they
+ * have submissions (then they are kept, and --force removes them too).
  *
  * Needs a teacher account: the dev seed's teacher by default, or set
  * TEACHER_EMAIL=you@example.com (see create-teacher.ts). The teacher's
  * "IELTS Preparation" course is created if it doesn't exist.
  */
 import { PrismaClient } from "@prisma/client";
-import { buildSection, type BuiltSection, type ReadingTestDef } from "./reading/types";
-import { READING_TESTS } from "./reading/tests";
+import { buildSection, type BuiltSection, type ReadingTestDef, type ReadingVariant } from "./reading/types";
+import { ACADEMIC_TESTS } from "./reading/tests";
+import { GENERAL_TESTS } from "./reading/general";
 
 const prisma = new PrismaClient();
 const FORCE = process.argv.includes("--force");
+const SEED: ReadingVariant[] = process.argv.includes("--both")
+  ? ["GENERAL", "ACADEMIC"]
+  : process.argv.includes("--academic")
+    ? ["ACADEMIC"]
+    : ["GENERAL"];
 
-const moduleTitle = (n: number) => `Academic Reading — Practice Test ${n}`;
+interface VariantInfo {
+  name: string;
+  part: string; // what one of the three texts is called
+  tests: ReadingTestDef[];
+  orderBase: number;
+  bandScale: "ACADEMIC" | "GENERAL_TRAINING";
+  mockInstructions: string;
+  partInstructions: (part: number, first: string, last: string) => string;
+}
+
+const VARIANTS: Record<ReadingVariant, VariantInfo> = {
+  GENERAL: {
+    name: "General Training Reading",
+    part: "Section",
+    tests: GENERAL_TESTS,
+    orderBase: 10,
+    bandScale: "GENERAL_TRAINING",
+    mockInstructions:
+      "This test has three sections and 40 questions. Section 1 contains short everyday texts, Section 2 contains work-related texts, and Section 3 contains one longer text on a topic of general interest. You have 60 minutes. There is no extra time to transfer answers. Spelling must be correct for written answers.",
+    partInstructions: (part, first, last) =>
+      `Practice: spend about 20 minutes on Questions ${first}–${last}, based on Section ${part}. Your band is estimated with the General Training table by scaling your score to a 40-question paper.`,
+  },
+  ACADEMIC: {
+    name: "Academic Reading",
+    part: "Passage",
+    tests: ACADEMIC_TESTS,
+    orderBase: 20,
+    bandScale: "ACADEMIC",
+    mockInstructions:
+      "This test has three reading passages and 40 questions. You have 60 minutes. There is no extra time to transfer answers. Spelling must be correct for written answers.",
+    partInstructions: (part, first, last) =>
+      `Practice: spend about 20 minutes on Questions ${first}–${last}, based on Reading Passage ${part}. Your band is estimated by scaling your score to a 40-question paper.`,
+  },
+};
+
+const moduleTitle = (v: ReadingVariant, n: number) => `${VARIANTS[v].name} — Practice Test ${n}`;
 
 async function deleteModuleCascade(moduleId: string) {
   const tasks = await prisma.task.findMany({ where: { moduleId }, select: { id: true } });
@@ -33,17 +79,19 @@ async function deleteModuleCascade(moduleId: string) {
   ]);
 }
 
-async function seedTest(courseId: string, test: ReadingTestDef): Promise<string> {
-  const title = moduleTitle(test.number);
+async function seedTest(courseId: string, variant: ReadingVariant, test: ReadingTestDef): Promise<string> {
+  const info = VARIANTS[variant];
+  const label = `${info.name} Test ${test.number}`;
+  const title = moduleTitle(variant, test.number);
   const existing = await prisma.module.findFirst({ where: { courseId, title } });
   if (existing) {
     const submissions = await prisma.submission.count({ where: { task: { moduleId: existing.id } } });
-    if (submissions > 0 && !FORCE) return `Test ${test.number}: kept (${submissions} submission(s) exist)`;
+    if (submissions > 0 && !FORCE) return `${label}: kept (${submissions} submission(s) exist)`;
     await deleteModuleCascade(existing.id);
   }
 
   const module = await prisma.module.create({
-    data: { courseId, title, type: "READING", order: 10 + test.number },
+    data: { courseId, title, type: "READING", order: info.orderBase + test.number },
   });
 
   let next = 1;
@@ -52,7 +100,7 @@ async function seedTest(courseId: string, test: ReadingTestDef): Promise<string>
     next += s.questions.length;
     return s;
   });
-  if (next - 1 !== 40) throw new Error(`Test ${test.number}: expected 40 questions, built ${next - 1}`);
+  if (next - 1 !== 40) throw new Error(`${label}: expected 40 questions, built ${next - 1}`);
 
   const createTask = async (opts: {
     title: string;
@@ -74,6 +122,8 @@ async function seedTest(courseId: string, test: ReadingTestDef): Promise<string>
         lockdownEnabled: opts.lockdownEnabled,
         contentJson: JSON.stringify({
           instructions: opts.instructions,
+          bandScale: info.bandScale,
+          sectionLabel: info.part,
           questions: [],
           sections: opts.sections.map(({ key: _key, ...s }) => s),
         }),
@@ -87,31 +137,36 @@ async function seedTest(courseId: string, test: ReadingTestDef): Promise<string>
     const first = s.questions[0].id.slice(1);
     const last = s.questions[s.questions.length - 1].id.slice(1);
     await createTask({
-      title: `T${test.number} Passage ${i + 1} — ${test.passages[i].shortTitle} (Q${first}–${last})`,
+      title: `T${test.number} ${info.part} ${i + 1} — ${test.passages[i].shortTitle} (Q${first}–${last})`,
       order: i + 1,
       timeLimitSec: 20 * 60,
       attemptsAllowed: 99,
       lockdownEnabled: false,
-      instructions: `Practice: spend about 20 minutes on Questions ${first}–${last}, based on Reading Passage ${i + 1}. Your band is estimated by scaling your score to a 40-question paper.`,
+      instructions: info.partInstructions(i + 1, first, last),
       sections: [s],
     });
   }
 
   await createTask({
-    title: `T${test.number} Full Mock Test — Academic Reading (40 questions, 60 minutes)`,
+    title: `T${test.number} Full Mock Test — ${info.name} (40 questions, 60 minutes)`,
     order: 4,
     timeLimitSec: 60 * 60,
     attemptsAllowed: 3,
     lockdownEnabled: true,
-    instructions:
-      "This test has three reading passages and 40 questions. You have 60 minutes. There is no extra time to transfer answers. Spelling must be correct for written answers.",
+    instructions: info.mockInstructions,
     sections,
   });
 
-  return `Test ${test.number}: ${existing ? "refreshed" : "added"}`;
+  return `${label}: ${existing ? "refreshed" : "added"}`;
 }
 
 async function main() {
+  for (const v of SEED) {
+    if (VARIANTS[v].tests.some((t) => (t.variant ?? "ACADEMIC") !== v)) {
+      throw new Error(`A test in the ${VARIANTS[v].name} list has the wrong variant`);
+    }
+  }
+
   // TEACHER_EMAIL picks the teacher who owns the practice course (defaults to the
   // dev seed's teacher). The course is created if that teacher doesn't have one.
   const teacherEmail = process.env.TEACHER_EMAIL ?? "teacher@example.com";
@@ -121,20 +176,16 @@ async function main() {
       `No teacher ${teacherEmail}. Run "npm run seed" (development) or "npm run create-teacher" (production) first.`
     );
   }
-  const course =
-    (await prisma.course.findFirst({
-      where: { createdById: teacher.id, title: "IELTS Preparation" },
-      orderBy: { createdAt: "asc" },
-    })) ??
-    (await prisma.course.create({
-      data: {
-        title: "IELTS Preparation",
-        description: "Academic Reading practice tests: timed passages and full mock tests with answer review.",
-        createdById: teacher.id,
-      },
-    }));
+  const description = `${SEED.map((v) => VARIANTS[v].name).join(" and ")} practice tests: timed sections and full mock tests with answer review.`;
+  const found = await prisma.course.findFirst({
+    where: { createdById: teacher.id, title: "IELTS Preparation" },
+    orderBy: { createdAt: "asc" },
+  });
+  const course = found
+    ? await prisma.course.update({ where: { id: found.id }, data: { description } })
+    : await prisma.course.create({ data: { title: "IELTS Preparation", description, createdById: teacher.id } });
 
-  // Older versions of this script used an unnumbered title for Test 1.
+  // Older versions of this script used an unnumbered title for Academic Test 1.
   const legacy = await prisma.module.findFirst({
     where: { courseId: course.id, title: "Academic Reading — Practice Test 1", order: 5 },
   });
@@ -144,7 +195,25 @@ async function main() {
     await deleteModuleCascade(legacy.id);
   }
 
-  for (const test of READING_TESTS) console.log(await seedTest(course.id, test));
+  // Remove practice tests of the kind not being seeded.
+  for (const v of (Object.keys(VARIANTS) as ReadingVariant[]).filter((v) => !SEED.includes(v))) {
+    const stale = await prisma.module.findMany({
+      where: { courseId: course.id, title: { startsWith: `${VARIANTS[v].name} — Practice Test` } },
+    });
+    for (const m of stale) {
+      const n = await prisma.submission.count({ where: { task: { moduleId: m.id } } });
+      if (n > 0 && !FORCE) {
+        console.log(`${m.title}: kept (${n} submission(s) exist; --force removes it)`);
+        continue;
+      }
+      await deleteModuleCascade(m.id);
+      console.log(`${m.title}: removed`);
+    }
+  }
+
+  for (const v of SEED) {
+    for (const test of VARIANTS[v].tests) console.log(await seedTest(course.id, v, test));
+  }
 }
 
 main()
