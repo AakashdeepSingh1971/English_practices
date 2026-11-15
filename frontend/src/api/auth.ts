@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AuthUser, Role } from "../stores/authStore";
+import type { AuthUser } from "../stores/authStore";
 
 interface AuthResponse {
   accessToken: string;
@@ -14,10 +14,9 @@ export async function login(email: string, password: string): Promise<AuthRespon
 export async function register(
   email: string,
   password: string,
-  name: string,
-  role: Role
+  name: string
 ): Promise<AuthResponse> {
-  const res = await apiClient.post<AuthResponse>("/auth/register", { email, password, name, role });
+  const res = await apiClient.post<AuthResponse>("/auth/register", { email, password, name });
   return res.data;
 }
 

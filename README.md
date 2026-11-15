@@ -5,7 +5,7 @@ A multi-user IELTS test-prep platform built so it can later generalize into broa
 ## Status: Phase 1 complete
 
 What works right now:
-- Auth with roles (`STUDENT` / `TEACHER_ADMIN`), JWT access token + httpOnly refresh cookie.
+- Auth with roles (`STUDENT` / `TEACHER_ADMIN`), JWT access token + httpOnly refresh cookie. Public sign-up creates students only.
 - Generic Course → Module → Task → Submission → Grade data model (not IELTS-hardcoded — a `Task`'s `contentJson` just holds whatever shape its type needs).
 - Teacher: create courses, modules, tasks (with a JSON content editor), answer keys; view roster, submissions, and violation logs; manually set/override grades.
 - Student: enroll in a course, take Listening/Reading tasks, get instant auto-graded band scores (official IELTS raw-score → band conversion tables).
@@ -21,30 +21,78 @@ Not yet built (see Phases 2-4 below): Writing/Speaking tasks, Claude-based AI gr
 ## Project structure
 
 ```
-backend/   Express + TypeScript + Prisma (SQLite) API
-frontend/  Vite + React + TypeScript app
+backend/      Express + TypeScript + Prisma (PostgreSQL) API
+frontend/     Vite + React + TypeScript app
+api/index.js  Vercel serverless function wrapping the Express app
+vercel.json   Vercel build, output and routing
+Dockerfile    alternative: one container serving both
+package.json  root scripts: build, build:vercel, start, test, db:local, dev:api, dev:web
 ```
 
-## Setup
+## Setup (local development)
 
-### Backend
+```bash
+cd backend && npm install && cp .env.example .env   # edit secrets if needed
+cd ../frontend && npm install && cd ..
+```
+Run each of these in its own terminal from the repo root:
+```bash
+npm run db:local   # PostgreSQL on localhost:5433, no install needed (data in backend/.pgdata)
+npm run dev:api    # API on http://localhost:4000
+npm run dev:web    # app on http://localhost:5173 (open this one)
+```
+First time only, with `db:local` running:
 ```bash
 cd backend
-npm install
-cp .env.example .env   # already done; edit secrets if needed
-npx prisma migrate dev # already applied; re-run if schema changes
-npm run seed            # creates sample teacher/student + sample tasks
-npm run dev             # http://localhost:4000
+npx prisma migrate deploy   # create the tables
+npm run seed                # sample teacher/student (dev only: password123 logins)
+npm run seed:reading        # the reading practice tests
 ```
+Vite forwards `/api` to the backend, so the app and the API share one origin in development, as on Vercel.
 
-### Frontend
+## Deployment: Vercel + Supabase
+
+Vercel serves the built React app from its CDN and runs the Express API as one serverless function
+(`api/index.js`). Everything is configured in `vercel.json`. Vercel has no persistent disk, so the database
+is Supabase PostgreSQL.
+
+**1. Create the database.** On supabase.com create a project (pick the region closest to your Vercel
+functions; Vercel's default is Washington, D.C., `iad1`). In the project, open **Connect** and copy two strings:
+- **Transaction pooler** (port 6543). Append `?pgbouncer=true&connection_limit=1`. This is `DATABASE_URL`.
+- **Session pooler** (port 5432). This is `DIRECT_URL`, used only for migrations. (Use the pooler, not the
+  "direct connection" host: that one is IPv6-only and Vercel's build machines can't reach it.)
+
+**2. Create the Vercel project.** Import the GitHub repo in Vercel, keep the root directory as the repo root and
+the framework preset as "Other" (`vercel.json` sets the install, build and output settings). Add these
+environment variables:
+
+| Variable | Environments | Value |
+|---|---|---|
+| `DATABASE_URL` | Production (+ Preview, see below) | transaction pooler URL from step 1 |
+| `DIRECT_URL` | Production (+ Preview) | session pooler URL from step 1 |
+| `JWT_ACCESS_SECRET` | all | long random string (`openssl rand -hex 32`) |
+| `JWT_REFRESH_SECRET` | all | a different long random string |
+
+Then deploy. Production deploys run `prisma migrate deploy` during the build, so the first one creates the
+tables and later ones apply new migrations. Preview deploys skip migrations so a pull request can't change
+the live schema; if previews share the production database, they must not depend on unmerged schema changes.
+
+**3. First-time setup**, from your machine, pointing the scripts at Supabase (use the session pooler URL for both):
 ```bash
-cd frontend
-npm install
-npm run dev              # http://localhost:5173
+cd backend
+export DATABASE_URL='<session pooler url>' DIRECT_URL='<session pooler url>'
+TEACHER_PASSWORD='a long password' npm run create-teacher -- you@example.com "Your Name"
+TEACHER_EMAIL=you@example.com npm run seed:reading
 ```
+Public sign-up only creates **student** accounts; teachers are created with `create-teacher`.
+Students join a course by entering its course ID on their dashboard (the ID is in the course page's address).
+Never run `npm run seed` against Supabase: it creates accounts with the password `password123`.
 
-### Reading practice tests
+**Other hosts.** The same code also runs as one long-lived server: `npm run build` then `npm start` from the
+repo root, or the `Dockerfile`. There the Express server also serves the built app. It still needs
+`DATABASE_URL`, `DIRECT_URL` and the two JWT secrets.
+
+## Reading practice tests
 ```bash
 cd backend
 npm run seed:reading              # adds new tests; refreshes tests nobody has taken yet
@@ -56,17 +104,18 @@ Each test lives in `backend/prisma/reading/tests/testNN.ts` and is registered in
 Question ids are `q1`–`q40` across the whole paper, so a single-passage task keeps official numbering
 (Passage 2 starts at 14). Single-passage scores are scaled to 40 before the band lookup.
 
-### Tests
+## Tests
 ```bash
 cd backend
 npm test   # unit + API integration + reading-content checks
 ```
-Tests run against a throwaway `prisma/test.db` that is recreated from the schema on every run; the dev
-database is never touched. The content checks verify every practice test has 40 correctly numbered
+Tests start their own throwaway PostgreSQL (no install needed) and apply the migrations from scratch on
+every run; the dev and production databases are never touched. Set `TEST_DATABASE_URL` to use an existing
+server instead (e.g. in CI). The content checks verify every practice test has 40 correctly numbered
 questions, a valid answer for every choice question, written answers within the stated word limit and
 present in the passage, and a total length within the real exam range.
 
-### Seeded logins
+## Seeded logins (development only)
 - Teacher: `teacher@example.com` / `password123`
 - Student: `student@example.com` / `password123`
 

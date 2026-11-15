@@ -2,13 +2,11 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { register } from "../../api/auth";
 import { useAuthStore } from "../../stores/authStore";
-import type { Role } from "../../stores/authStore";
 
 export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<Role>("STUDENT");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const setSession = useAuthStore((s) => s.setSession);
@@ -19,7 +17,7 @@ export function Register() {
     setError(null);
     setLoading(true);
     try {
-      const { accessToken, user } = await register(email, password, name, role);
+      const { accessToken, user } = await register(email, password, name);
       setSession(accessToken, user);
       navigate(user.role === "TEACHER_ADMIN" ? "/teacher" : "/student", { replace: true });
     } catch (err: any) {
@@ -31,7 +29,7 @@ export function Register() {
 
   return (
     <div className="page auth-page">
-      <h1>Create account</h1>
+      <h1>Create student account</h1>
       <form onSubmit={handleSubmit}>
         <label>
           Name
@@ -44,13 +42,6 @@ export function Register() {
         <label>
           Password (min 8 characters)
           <input type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        <label>
-          I am a
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="STUDENT">Student</option>
-            <option value="TEACHER_ADMIN">Teacher / Admin</option>
-          </select>
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={loading}>

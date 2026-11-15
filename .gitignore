@@ -7,3 +7,8 @@ build/
 backend/prisma/dev.db
 .DS_Store
 *.log
+
+# Local PostgreSQL data (npm run db:local)
+backend/.pgdata/
+# Vercel CLI
+.vercel

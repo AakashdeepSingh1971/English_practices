@@ -6,7 +6,9 @@
  *   npm run seed:reading            add new tests; refresh tests nobody has taken yet
  *   npm run seed:reading -- --force also replace tests that have submissions (deletes them!)
  *
- * Requires `npm run seed` first (sample teacher + "IELTS Preparation" course).
+ * Needs a teacher account: the dev seed's teacher by default, or set
+ * TEACHER_EMAIL=you@example.com (see create-teacher.ts). The teacher's
+ * "IELTS Preparation" course is created if it doesn't exist.
  */
 import { PrismaClient } from "@prisma/client";
 import { buildSection, type BuiltSection, type ReadingTestDef } from "./reading/types";
@@ -110,14 +112,27 @@ async function seedTest(courseId: string, test: ReadingTestDef): Promise<string>
 }
 
 async function main() {
-  const teacher = await prisma.user.findUnique({ where: { email: "teacher@example.com" } });
-  const course = teacher
-    ? await prisma.course.findFirst({
-        where: { createdById: teacher.id, title: "IELTS Preparation" },
-        orderBy: { createdAt: "asc" },
-      })
-    : null;
-  if (!course) throw new Error('Sample course not found — run "npm run seed" first.');
+  // TEACHER_EMAIL picks the teacher who owns the practice course (defaults to the
+  // dev seed's teacher). The course is created if that teacher doesn't have one.
+  const teacherEmail = process.env.TEACHER_EMAIL ?? "teacher@example.com";
+  const teacher = await prisma.user.findUnique({ where: { email: teacherEmail } });
+  if (!teacher || teacher.role !== "TEACHER_ADMIN") {
+    throw new Error(
+      `No teacher ${teacherEmail}. Run "npm run seed" (development) or "npm run create-teacher" (production) first.`
+    );
+  }
+  const course =
+    (await prisma.course.findFirst({
+      where: { createdById: teacher.id, title: "IELTS Preparation" },
+      orderBy: { createdAt: "asc" },
+    })) ??
+    (await prisma.course.create({
+      data: {
+        title: "IELTS Preparation",
+        description: "Academic Reading practice tests: timed passages and full mock tests with answer review.",
+        createdById: teacher.id,
+      },
+    }));
 
   // Older versions of this script used an unnumbered title for Test 1.
   const legacy = await prisma.module.findFirst({

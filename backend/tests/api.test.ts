@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { app } from "../src/app";
 import { prisma } from "../src/prisma";
 import { buildSection } from "../prisma/reading/types";
@@ -92,6 +92,19 @@ const submit = (who: typeof student, id: string, answers: Record<string, string>
 describe("auth", () => {
   it("rejects requests without a token", async () => {
     expect((await api.get("/api/students/me/results")).status).toBe(401);
+  });
+  it("public sign-up always creates a student, even if a teacher role is requested", async () => {
+    const res = await api
+      .post("/api/auth/register")
+      .send({ email: "sneaky@test.local", password: PASSWORD, name: "Sneaky", role: "TEACHER_ADMIN" });
+    expect(res.status).toBe(201);
+    expect(res.body.user.role).toBe("STUDENT");
+    expect((await prisma.user.findUnique({ where: { email: "sneaky@test.local" } }))!.role).toBe("STUDENT");
+  });
+  it("answers unknown API routes with JSON 404", async () => {
+    const res = await api.get("/api/nope").set(student.auth);
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Not found" });
   });
   it("rejects a wrong password", async () => {
     const res = await api.post("/api/auth/login").send({ email: "student@test.local", password: "nope" });

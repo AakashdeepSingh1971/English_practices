@@ -46,7 +46,9 @@ export function Login() {
       <p>
         No account? <Link to="/register">Register</Link>
       </p>
-      <p className="hint">Seeded logins: teacher@example.com / student@example.com, password: password123</p>
+      {import.meta.env.DEV && (
+        <p className="hint">Seeded logins: teacher@example.com / student@example.com, password: password123</p>
+      )}
     </div>
   );
 }

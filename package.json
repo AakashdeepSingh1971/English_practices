@@ -1,0 +1,17 @@
+{
+  "name": "ielts-prep-platform",
+  "private": true,
+  "description": "IELTS prep platform: React app + Express API, deployable to Vercel (with Supabase Postgres) or as one Docker container.",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "npm ci --prefix frontend --include=dev && npm ci --prefix backend --include=dev && npm run build --prefix frontend && npm run build --prefix backend",
+    "build:vercel": "npm run build --prefix frontend && npm run build --prefix backend && if [ \"$VERCEL_ENV\" = \"production\" ]; then npm run migrate:deploy --prefix backend; else echo \"Skipping migrations (not a production deploy)\"; fi",
+    "start": "npm start --prefix backend",
+    "test": "npm test --prefix backend",
+    "dev:api": "npm run dev --prefix backend",
+    "db:local": "npm run db:local --prefix backend",
+    "dev:web": "npm run dev --prefix frontend"
+  }
+}

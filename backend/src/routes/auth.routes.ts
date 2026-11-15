@@ -7,7 +7,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "../services/auth.service";
-import { RoleSchema } from "../types/enums";
+import { env } from "../config/env";
 import { asyncHandler } from "../middleware/errorHandler";
 
 export const authRouter = Router();
@@ -18,20 +18,22 @@ const REFRESH_COOKIE_OPTS = {
   sameSite: "lax" as const,
   path: "/api/auth",
   maxAge: 7 * 24 * 60 * 60 * 1000,
+  secure: env.isProduction,
 };
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1),
-  role: RoleSchema.default("STUDENT"),
 });
 
 authRouter.post(
   "/register",
   asyncHandler(async (req, res) => {
-    const { email, password, name, role } = registerSchema.parse(req.body);
-    const user = await registerUser(email, password, name, role);
+    // Public sign-up always creates a student. Any "role" in the body is ignored;
+    // teacher accounts are created on the server with `npm run create-teacher`.
+    const { email, password, name } = registerSchema.parse(req.body);
+    const user = await registerUser(email, password, name, "STUDENT");
     const payload = { sub: user.id, role: user.role as "STUDENT" | "TEACHER_ADMIN" };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);

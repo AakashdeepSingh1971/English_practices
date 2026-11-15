@@ -1,14 +1,19 @@
 generator client {
   provider = "prisma-client-js"
+  // "rhel-openssl-3.0.x" is the runtime of Vercel's Node.js functions.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
+// PostgreSQL (Supabase in production). DATABASE_URL is the pooled connection
+// used by the app; DIRECT_URL is a direct connection used only for migrations.
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// SQLite has no native enum support in Prisma, so enum-shaped fields below
-// are plain Strings. Valid values are enforced in code via the Zod enums in
+// Enum-shaped fields below are plain Strings (kept from the original SQLite
+// schema, which had no enum support). Valid values are enforced in code via the Zod enums in
 // src/types/enums.ts (Role, ModuleType, TaskType, SubmissionStatus, ViolationType).
 
 model User {

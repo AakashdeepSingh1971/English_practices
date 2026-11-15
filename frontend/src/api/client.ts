@@ -1,7 +1,10 @@
 import axios from "axios";
 import { useAuthStore } from "../stores/authStore";
 
-export const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+// Same origin by default: in production the backend serves this app, and in
+// development Vite proxies /api to the backend (see vite.config.ts). Set
+// VITE_API_URL only if the API is hosted somewhere else.
+export const apiBaseUrl = import.meta.env.VITE_API_URL ?? "";
 
 export const apiClient = axios.create({
   baseURL: apiBaseUrl + "/api",
