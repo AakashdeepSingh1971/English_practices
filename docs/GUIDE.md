@@ -258,6 +258,25 @@ Use this to test the app, not just your reading:
 
 ---
 
+## Install it as an app
+
+The site can be installed like an app, with its own icon and window. Once installed, it opens straight to your dashboard.
+
+| Device | How |
+|---|---|
+| Android (Chrome) | Click **Install app** in the top bar, or use Chrome's menu → **Install app** |
+| Windows / Mac / Linux (Chrome, Edge) | Click **Install app**, or use the install icon in the address bar |
+| iPhone / iPad (Safari) | Tap **Share** → **Add to Home Screen** (the **Install app** button shows these steps) |
+
+**Staying signed in:**
+- **Android and desktop:** the app shares the browser's sign-in, so if you're signed in on the website, the app opens already signed in.
+- **iPhone and iPad:** Apple keeps home-screen apps separate from Safari, so sign in once inside the app.
+- **Everywhere:** each time you open the app, your sign-in is renewed, and you stay signed in as long as you use it at least once every 30 days. **Log out** ends the session.
+
+A test you started on the website can be resumed in the app, and the other way round, because attempts are saved on the server. The app also opens without internet, but tests and results need a connection.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |

@@ -114,6 +114,28 @@ const submit = (who: typeof student, id: string, answers: Record<string, string>
   api.post(`/api/submissions/${id}/submit`).set(who.auth).send({ responseJson: { answers } });
 
 describe("auth", () => {
+  it("refresh restores the session from the cookie alone and renews the cookie", async () => {
+    const login = await api.post("/api/auth/login").send({ email: "student@test.local", password: PASSWORD });
+    const cookie = login.headers["set-cookie"][0].split(";")[0];
+    const res = await api.post("/api/auth/refresh").set("Cookie", cookie);
+    expect(res.status).toBe(200);
+    expect(res.body.accessToken).toBeTruthy();
+    expect(res.body.user).toMatchObject({ email: "student@test.local", role: "STUDENT" });
+    const renewed = res.headers["set-cookie"]?.[0] ?? "";
+    expect(renewed).toMatch(/^refreshToken=/);
+    expect(renewed).toMatch(/Max-Age=2592000/); // 30 days
+    expect((await api.post("/api/auth/refresh")).status).toBe(401);
+    expect((await api.post("/api/auth/refresh").set("Cookie", "refreshToken=garbage")).status).toBe(401);
+  });
+
+  it("refresh fails once the account is deleted", async () => {
+    const gone = await makeUser("gone@test.local", "STUDENT");
+    const login = await api.post("/api/auth/login").send({ email: "gone@test.local", password: PASSWORD });
+    const cookie = login.headers["set-cookie"][0].split(";")[0];
+    await prisma.user.delete({ where: { id: gone.user.id } });
+    expect((await api.post("/api/auth/refresh").set("Cookie", cookie)).status).toBe(401);
+  });
+
   it("rejects requests without a token", async () => {
     expect((await api.get("/api/students/me/results")).status).toBe(401);
   });

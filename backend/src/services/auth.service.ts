@@ -6,7 +6,9 @@ import type { Role } from "../types/enums";
 
 const BCRYPT_ROUNDS = 12;
 const ACCESS_TOKEN_TTL = "15m";
-const REFRESH_TOKEN_TTL = "7d";
+// Sliding session: every refresh issues a new refresh token, so anyone who opens
+// the site or installed app at least once every 30 days stays signed in.
+const REFRESH_TOKEN_TTL = "30d";
 
 export interface AccessTokenPayload {
   sub: string;

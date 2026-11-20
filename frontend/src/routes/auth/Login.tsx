@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../../api/auth";
 import { useAuthStore } from "../../stores/authStore";
+import { InstallAppButton } from "../../components/pwa/InstallAppButton";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -45,6 +46,9 @@ export function Login() {
       </form>
       <p>
         No account? <Link to="/register">Register</Link>
+      </p>
+      <p className="install-row">
+        <InstallAppButton />
       </p>
       {import.meta.env.DEV && (
         <p className="hint">Seeded logins: teacher@example.com / student@example.com, password: password123</p>

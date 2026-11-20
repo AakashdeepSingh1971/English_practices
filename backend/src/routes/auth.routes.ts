@@ -9,6 +9,7 @@ import {
 } from "../services/auth.service";
 import { env } from "../config/env";
 import { asyncHandler } from "../middleware/errorHandler";
+import { prisma } from "../prisma";
 
 export const authRouter = Router();
 
@@ -17,7 +18,7 @@ const REFRESH_COOKIE_OPTS = {
   httpOnly: true,
   sameSite: "lax" as const,
   path: "/api/auth",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // matches REFRESH_TOKEN_TTL
   secure: env.isProduction,
 };
 
@@ -76,13 +77,24 @@ authRouter.post(
     if (!token) {
       return res.status(401).json({ error: "Missing refresh token" });
     }
+    let sub: string;
     try {
-      const payload = verifyRefreshToken(token);
-      const accessToken = signAccessToken({ sub: payload.sub, role: payload.role });
-      res.json({ accessToken });
+      sub = verifyRefreshToken(token).sub;
     } catch {
       return res.status(401).json({ error: "Invalid or expired refresh token" });
     }
+    // Re-read the user so a deleted account can't refresh and role changes apply.
+    // Returning the profile lets a new browser or installed app restore the
+    // session from the cookie alone, without anything in localStorage.
+    const user = await prisma.user.findUnique({ where: { id: sub } });
+    if (!user) return res.status(401).json({ error: "Account no longer exists" });
+    const payload = { sub: user.id, role: user.role as "STUDENT" | "TEACHER_ADMIN" };
+    // Sliding expiry: issue a fresh refresh cookie on every refresh.
+    res.cookie(REFRESH_COOKIE, signRefreshToken(payload), REFRESH_COOKIE_OPTS);
+    res.json({
+      accessToken: signAccessToken(payload),
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    });
   })
 );
 

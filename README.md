@@ -19,6 +19,7 @@ What works right now:
 Not yet built (see Phases 2-4 below): Writing/Speaking tasks, Claude-based AI grading, audio recording/transcription, analytics dashboards.
 
 ## Project structure
+Full walkthrough of the structure, data model, request flow and design approach: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```
 backend/      Express + TypeScript + Prisma (PostgreSQL) API

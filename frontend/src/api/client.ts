@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useAuthStore } from "../stores/authStore";
+import { useAuthStore, type AuthUser } from "../stores/authStore";
 
 // Same origin by default: in production the backend serves this app, and in
 // development Vite proxies /api to the backend (see vite.config.ts). Set
@@ -19,16 +19,24 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshPromise: Promise<string | null> | null = null;
+export interface RefreshedSession {
+  accessToken: string;
+  user: AuthUser;
+}
 
-async function refreshAccessToken(): Promise<string | null> {
+let refreshPromise: Promise<RefreshedSession | null> | null = null;
+
+// Trades the httpOnly refresh cookie for a new access token and the user's
+// profile. The server also renews the cookie, so the session keeps sliding
+// forward while the site or installed app is used.
+async function refreshAccessToken(): Promise<RefreshedSession | null> {
   try {
     const res = await axios.post(
       `${apiBaseUrl}/api/auth/refresh`,
       {},
       { withCredentials: true }
     );
-    return res.data.accessToken as string;
+    return { accessToken: res.data.accessToken as string, user: res.data.user as AuthUser };
   } catch {
     return null;
   }
@@ -45,11 +53,10 @@ apiClient.interceptors.response.use(
           refreshPromise = null;
         });
       }
-      const newToken = await refreshPromise;
-      if (newToken) {
-        const { user } = useAuthStore.getState();
-        if (user) useAuthStore.getState().setSession(newToken, user);
-        original.headers.Authorization = `Bearer ${newToken}`;
+      const session = await refreshPromise;
+      if (session) {
+        useAuthStore.getState().setSession(session.accessToken, session.user);
+        original.headers.Authorization = `Bearer ${session.accessToken}`;
         return apiClient(original);
       }
       useAuthStore.getState().clearSession();
